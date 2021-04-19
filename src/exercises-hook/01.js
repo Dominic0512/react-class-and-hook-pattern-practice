@@ -4,25 +4,26 @@ import React from 'react'
 // 🐨 uncomment this import to get the switch component.
 // It takes an `onClick` and an `on` prop
 import {Switch} from '../switch'
+import { useDidUpdateEffect } from './util';
 
 function Toggle(props) {
   //-- Solution1
-  const [on, setOn] = React.useState(false)
-  const toggle = React.useCallback(() => {
-    const newOn = !on
-    setOn(newOn)
-    props.onToggle(newOn)
-  }, [on, props])
-  return <Switch on={on} onClick={toggle} />
+  // const [on, setOn] = React.useState(false)
+  // const toggle = React.useCallback(() => {
+  //   const newOn = !on
+  //   setOn(newOn)
+  //   props.onToggle(newOn)
+  // }, [on, props])
+  // return <Switch on={on} onClick={toggle} />
 
   //-- Solution2
-  // const [on, toggle] = React.useState(false)
+  const [on, toggle] = React.useState(false)
 
-  // React.useEffect(() => {
-  //   props.onToggle(on)
-  // }, [on, props])
+  useDidUpdateEffect(() => {
+    props.onToggle(on)
+  }, [on, props])
 
-  // return <Switch on={on} onClick={() => toggle(!on)} />
+  return <Switch on={on} onClick={() => toggle(!on)} />
 
   //-- Solution3
   // const [on, setOn] = React.useState(false)
@@ -31,7 +32,7 @@ function Toggle(props) {
   //   setOn(!on)
   // }, [on])
 
-  // React.useEffect(() => {
+  // React.useDidUpdateEffect(() => {
   //   props.onToggle(on)
   // }, [on, props])
 
