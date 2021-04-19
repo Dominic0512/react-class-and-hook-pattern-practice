@@ -19,20 +19,31 @@ const files = [
 ]
 
 const pages = files.reduce((p, filename, index, fullArray) => {
+
   const final = require(`./exercises-final/${filename}`)
   Object.assign(final, {
     previous: fullArray[index - 1],
     next: fullArray[index + 1],
     isolatedPath: `/isolated/exercises-final/${filename}`,
   })
+
   const exercise = require(`./exercises/${filename}`)
   Object.assign(exercise, {
     previous: fullArray[index - 1],
     next: fullArray[index + 1],
     isolatedPath: `/isolated/exercises/${filename}`,
   })
+
+  const exerciseHook = require(`./exercises-hook/${filename}`)
+  Object.assign(exerciseHook, {
+    previous: fullArray[index - 1],
+    next: fullArray[index + 1],
+    isolatedPath: `/isolated/exercise-hook/${filename}`,
+  })
+
   p[filename] = {
     exercise,
+    exerciseHook,
     final,
     title: final.default.title,
   }
@@ -91,34 +102,42 @@ function ExerciseContainer({match}) {
   const {exerciseId} = match.params
   const {
     exercise: {default: Exercise},
+    exerciseHook: {default: ExerciseHook},
     final: {default: Final},
   } = pages[exerciseId]
   return (
-    <div
-      style={{
-        padding: 20,
-        height: '100%',
-        display: 'grid',
-        gridGap: '20px',
-        gridTemplateColumns: '1fr 1fr',
-        gridTemplateRows: '30px 1fr 30px',
-      }}
-    >
+    <>
       <h1 style={{gridColumn: 'span 2', textAlign: 'center'}}>
         {Final.title}
       </h1>
-      <ComponentContainer
-        label={<Link to={`/${exerciseId}/exercise`}>Exercise</Link>}
+      <div
+        style={{
+          padding: 20,
+          height: '100%',
+          display: 'grid',
+          gridGap: '20px',
+          gridTemplateColumns: '1fr 1fr 1fr',
+        }}
       >
-        <Exercise />
-      </ComponentContainer>
-      <ComponentContainer
-        label={<Link to={`/${exerciseId}/final`}>Final Version</Link>}
-      >
-        <Final />
-      </ComponentContainer>
+        <ComponentContainer
+          label={<Link to={`/${exerciseId}/exercise`}>Exercise</Link>}
+        >
+          <Exercise />
+        </ComponentContainer>
+        <ComponentContainer
+          label={<Link to={`/${exerciseId}/exercise-hook`}>Exercise Hook</Link>}
+        >
+          <ExerciseHook />
+        </ComponentContainer>
+        <ComponentContainer
+          label={<Link to={`/${exerciseId}/final`}>Final Version</Link>}
+        >
+          <Final />
+        </ComponentContainer>
+        
+      </div>
       <NavigationFooter exerciseId={exerciseId} type="page" />
-    </div>
+    </>
   )
 }
 
@@ -129,6 +148,9 @@ function NavigationFooter({exerciseId, type}) {
   if (type === 'exercise') {
     suffix = '/exercise'
     Usage = current.exercise
+  } else if (type === 'hook') {
+    suffix = '/exercise-hook'
+    Usage = current.exerciseHook
   } else if (type === 'final') {
     suffix = '/final'
   }
@@ -217,11 +239,15 @@ class Isolated extends React.Component {
   Component = loadable({
     loader: () => {
       const {moduleName} = this.props.match.params
-      return this.props.type === 'exercise'
-        ? import(`./exercises/${moduleName}`)
-        : this.props.type === 'final'
-          ? import(`./exercises-final/${moduleName}`)
-          : null
+      if (this.props.type === 'exercise') {
+        return import(`./exercises/${moduleName}`)
+      } else if (this.props.type === 'exerciseHook') {
+        return import(`./exercises-hook/${moduleName}`)
+      } else if (this.props.type === 'final') {
+        return import(`./exercises-final/${moduleName}`)
+      } else {
+        return null
+      }
     },
     loading: () => <div>Loading...</div>,
   })
@@ -259,6 +285,9 @@ function Home() {
               <Link to={`/${filename}`}>{title}</Link>{' '}
               <small>
                 <Link to={`/${filename}/exercise`}>(exercise)</Link>{' '}
+                <Link to={`/${filename}/exercise-hook`}>
+                  (exerciseHook)
+                </Link>{' '}
                 <Link to={`/${filename}/final`}>(final)</Link>
               </small>
             </div>
@@ -284,6 +313,13 @@ function App() {
           render={props => <FullPage {...props} type="exercise" />}
           exact={true}
         />
+         <Route
+          path={`/:exerciseId/exercise-hook`}
+          render={(props) => (
+            <FullPage {...props} type="exerciseHook" />
+          )}
+          exact={true}
+        />
         <Route
           path={`/:exerciseId/final`}
           render={props => <FullPage {...props} type="final" />}
@@ -293,6 +329,13 @@ function App() {
           path={`/isolated/exercises/:moduleName`}
           exact={true}
           render={props => <Isolated {...props} type="exercise" />}
+        />
+        <Route
+          path={`/isolated/exercises-hook/:moduleName`}
+          exact={true}
+          render={(props) => (
+            <Isolated {...props} type="exerciseHook" />
+          )}
         />
         <Route
           path={`/isolated/exercises-final/:moduleName`}
