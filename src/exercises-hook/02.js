@@ -4,37 +4,46 @@ import React from 'react'
 import {Switch} from '../switch'
 import { useDidUpdateEffect } from './util';
 
-const ToggleContext = React.createContext();
+function componentHasChild(child) {
+  for (const property in Toggle) {
+    if (Toggle.hasOwnProperty(property)) {
+      if (child.type === Toggle[property]) {
+        return true
+      }
+    }
+  }
+  return false
+}
 
-function On({ children }) {
-  const { on } = React.useContext(ToggleContext)
+
+function On({ on, children }) {
   return on ? children : null;
 }
 
-function Off({ children }) {
-  const { on } = React.useContext(ToggleContext)
-  return on ? null : children ;
+function Off({ on, children }) {
+  return on ? null : children;
 }
 
-function Button() {
-  const { on, toggle } = React.useContext(ToggleContext)
+function Button({ on, toggle }) {
   return <Switch on={on} onClick={() => toggle(!on)} />
 }
 
-function Toggle(props) {
-  const [on, toggle] = React.useState(false)
+function Toggle({children, ...props}) {
+  const [on, toggle] = React.useState(false);
 
   useDidUpdateEffect(() => {
-    props.onToggle(on)
+    props.onToggle(on);
   }, [on, props])
 
-  const contextProps = React.useMemo(() => ({on, toggle}), [on])
-
-  return (
-    <ToggleContext.Provider value={contextProps}>
-      {props.children}
-    </ToggleContext.Provider>
-  )
+  return React.Children.map(children, child => {
+    if (componentHasChild(child)) {
+      return React.cloneElement(child, {
+        on,
+        toggle
+      })
+    }
+    return child
+  })
 }
 
 Object.assign(Toggle, {
