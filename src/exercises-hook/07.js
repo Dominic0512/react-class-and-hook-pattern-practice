@@ -1,51 +1,64 @@
-// State Initializers
-
 import React from 'react'
-import {Switch} from '../switch'
+import { Switch } from '../switch'
+import { useDidUpdateEffect } from './util';
 
-const callAll = (...fns) => (...args) =>
-  fns.forEach(fn => fn && fn(...args))
+const callAll = (...fns) => (...args) => fns.forEach(fn => fn && fn(...args))
+function Toggle(props) {
+  const initialState = {
+    on: props.initialOn
+  }
+  
+  const [{ on }, setState] = React.useState(initialState);
 
-class Toggle extends React.Component {
-  // 🐨 We're going to need some static defaultProps here to allow
-  // people to pass a `initialOn` prop.
-  //
-  // 🐨 Rather than initializing state to have on as false,
-  // set on to this.props.initialOn
-  state = {on: false}
+  const reset = React.useCallback(
+    () => {
+      setState(initialState)
+      props.onReset(initialState.on);
+    },
+    [initialState, props.onReset]
+  )
 
-  // 🐨 now let's add a reset method here that resets the state
-  // to the initial state. Then add a callback that calls
-  // this.props.onReset with the `on` state.
-  toggle = () =>
-    this.setState(
-      ({on}) => ({on: !on}),
-      () => this.props.onToggle(this.state.on),
-    )
-  getTogglerProps = ({onClick, ...props} = {}) => {
-    return {
-      'aria-pressed': this.state.on,
-      onClick: callAll(onClick, this.toggle),
+  const toggle = React.useCallback(
+    () => {
+      setState(prevState => ({ 
+        ...prevState,
+        on: !on
+      }))
+    },
+    [on],
+  )
+
+  const getTogglerProps = React.useCallback(
+    ({ onClick, ...props } = {}) => ({
+      'aria-pressed': on,
+      onClick: callAll(onClick, toggle),
       ...props,
-    }
-  }
-  getStateAndHelpers() {
-    return {
-      on: this.state.on,
-      toggle: this.toggle,
-      // 🐨 now let's include the reset method here
-      // so folks can use that in their implementation.
-      getTogglerProps: this.getTogglerProps,
-    }
-  }
-  render() {
-    return this.props.children(this.getStateAndHelpers())
-  }
+    }), 
+    [on, toggle]
+  );
+
+  const getStateAndProps = React.useCallback(
+    () => ({
+      on,
+      reset,
+      toggle,
+      getTogglerProps,
+    }), 
+    [on, reset, toggle, getTogglerProps],
+  )
+  
+  useDidUpdateEffect(() => {
+    props.onToggle(on)
+
+  }, [on, props.onToggle])
+
+  return props.children(getStateAndProps())
 }
 
-// Don't make changes to the Usage component. It's here to show you how your
-// component is intended to be used and is used in the tests.
-// You can make all the tests pass by updating the Toggle component.
+Toggle.defaultProps = {
+  initialOn: false,
+  onReset: () => {},
+}
 function Usage({
   initialOn = false,
   onToggle = (...args) => console.log('onToggle', ...args),
