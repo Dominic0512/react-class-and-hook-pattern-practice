@@ -1,71 +1,88 @@
-// state reducer with types
-
 import React from 'react'
-import {Switch} from '../switch'
+import { Switch } from '../switch'
+import { useStateWithCallback } from './util';
 
-const callAll = (...fns) => (...args) =>
-  fns.forEach(fn => fn && fn(...args))
+const callAll = (...fns) => (...args) => fns.forEach(fn => fn && fn(...args))
 
-class Toggle extends React.Component {
-  static defaultProps = {
-    initialOn: false,
-    onReset: () => {},
-    stateReducer: (state, changes) => changes,
+const Toggle = (props) => {
+  const initialState = {
+    on: props.initialOn
   }
-  initialState = {on: this.props.initialOn}
-  state = this.initialState
-  internalSetState(changes, callback) {
-    this.setState(state => {
-      // handle function setState call
-      const changesObject =
-        typeof changes === 'function' ? changes(state) : changes
-      // apply state reducer
-      const reducedChanges =
-        this.props.stateReducer(state, changesObject) || {}
-      // 🐨  in addition to what we've done, let's pluck off the `type`
-      // property and return an object only if the state changes
-      // 💰 to remove the `type`, you can destructure the changes:
-      // `{type, ...c}`
-      return Object.keys(reducedChanges).length
-        ? reducedChanges
-        : null
-    }, callback)
-  }
-  reset = () =>
-    // 🐨 add a `type` string property to this call
-    this.internalSetState(this.initialState, () =>
-      this.props.onReset(this.state.on),
-    )
-  // 🐨 accept a `type` property here and give it a default value
-  toggle = () =>
-    this.internalSetState(
-      // pass the `type` string to this object
-      ({on}) => ({on: !on}),
-      () => this.props.onToggle(this.state.on),
-    )
-  getTogglerProps = ({onClick, ...props} = {}) => ({
-    // 🐨 change `this.toggle` to `() => this.toggle()`
-    // to avoid passing the click event to this.toggle.
-    onClick: callAll(onClick, this.toggle),
-    'aria-pressed': this.state.on,
-    ...props,
-  })
-  getStateAndHelpers() {
-    return {
-      on: this.state.on,
-      toggle: this.toggle,
-      reset: this.reset,
-      getTogglerProps: this.getTogglerProps,
-    }
-  }
-  render() {
-    return this.props.children(this.getStateAndHelpers())
-  }
+  
+  const [{ on }, setState] = useStateWithCallback(initialState);
+
+  const internalSetState = React.useCallback(
+    (changes, callback) => {
+      setState(prevState => {
+        return [changes]
+          .map(c => typeof c === 'function' ? c(prevState): c)
+          .map(c => props.stateReducer(prevState, c) || {})
+          .map(({type, ...remainChanges}) => remainChanges)
+          .map(c => Object.keys(c).length ? c : null )[0];
+      }, callback);
+    }, 
+    [props.stateReducer]
+  )
+
+  const reset = React.useCallback(
+    () => {
+      internalSetState(
+        { ...initialState, type: Toggle.actionTypes.reset }, 
+        (prevState, state) => {
+          props.onReset(state.on)
+        }
+      )
+    },
+    [initialState, props.onReset, internalSetState]
+  )
+
+  const toggle = React.useCallback(
+    ({ type = Toggle.actionTypes.toggle } = {}) => {
+      internalSetState(prevState => ({ 
+        ...prevState,
+        type,
+        on: !on
+      }), 
+      (prevState, state) => props.onToggle(state.on))
+    },
+    [on, internalSetState, props.onToggle],
+  )
+
+  const getTogglerProps = React.useCallback(
+    ({ onClick, ...props } = {}) => ({
+      'aria-pressed': on,
+      onClick: callAll(onClick, toggle),
+      ...props,
+    }), 
+    [on, toggle]
+  );
+
+  const getStateAndProps = React.useCallback(
+    () => ({
+      on,
+      reset,
+      toggle,
+      getTogglerProps,
+    }), 
+    [on, reset, toggle, getTogglerProps],
+  )
+
+  return props.children(getStateAndProps())
+};
+
+Toggle.defaultProps = {
+  initialOn: false,
+  onReset: () => {},
+  stateReducer: (state, changes) => changes,
 }
 
-// Don't make changes to the Usage component. It's here to show you how your
-// component is intended to be used and is used in the tests.
-// You can make all the tests pass by updating the Toggle component.
+Toggle.actionTypes = {
+  reset: '__reset__',
+  toggle: '__toggle__',
+}
+
+
+
 class Usage extends React.Component {
   static defaultProps = {
     onToggle: (...args) => console.log('onToggle', ...args),

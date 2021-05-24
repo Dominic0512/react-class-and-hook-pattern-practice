@@ -12,6 +12,11 @@ class Toggle extends React.Component {
     onReset: () => {},
     stateReducer: (state, changes) => changes,
   }
+  static actionTypes = {
+    reset: '__reset__',
+    toggle: '__toggle__'
+  }
+
   initialState = {on: this.props.initialOn}
   state = this.initialState
   internalSetState(changes, callback) {
@@ -22,31 +27,27 @@ class Toggle extends React.Component {
       // apply state reducer
       const reducedChanges =
         this.props.stateReducer(state, changesObject) || {}
-      // 🐨  in addition to what we've done, let's pluck off the `type`
-      // property and return an object only if the state changes
-      // 💰 to remove the `type`, you can destructure the changes:
-      // `{type, ...c}`
-      return Object.keys(reducedChanges).length
-        ? reducedChanges
-        : null
+
+      const { type: ignoredType, ...remainChanges } = reducedChanges;
+      return Object.keys(remainChanges).length ? remainChanges : null
     }, callback)
   }
   reset = () =>
-    // 🐨 add a `type` string property to this call
-    this.internalSetState(this.initialState, () =>
+    this.internalSetState({
+      ...this.initialState,
+      type: Toggle.actionTypes.reset
+    }, () =>
       this.props.onReset(this.state.on),
     )
-  // 🐨 accept a `type` property here and give it a default value
-  toggle = () =>
+
+  toggle = ({ type = Toggle.actionTypes.toggle } = {}) => 
     this.internalSetState(
-      // pass the `type` string to this object
-      ({on}) => ({on: !on}),
+      ({on}) => ({type, on: !on}),
       () => this.props.onToggle(this.state.on),
     )
+   
   getTogglerProps = ({onClick, ...props} = {}) => ({
-    // 🐨 change `this.toggle` to `() => this.toggle()`
-    // to avoid passing the click event to this.toggle.
-    onClick: callAll(onClick, this.toggle),
+    onClick: callAll(onClick, () => this.toggle()),
     'aria-pressed': this.state.on,
     ...props,
   })
@@ -112,7 +113,7 @@ class Usage extends React.Component {
               <div data-testid="notice">
                 Whoa, you clicked too much!
                 <br />
-                <button onClick={() => toggle({type: 'forced'})}>
+                <button onClick={() => toggle({ type: 'forced' })}>
                   Force Toggle
                 </button>
                 <br />
