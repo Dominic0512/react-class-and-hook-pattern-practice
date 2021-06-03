@@ -39,12 +39,14 @@ class Toggle extends React.Component {
       )}
     </ToggleConsumer>
   )
+  
   toggle = () =>
     this.setState(
       ({on}) => ({on: !on}),
       () => this.props.onToggle(this.state.on),
     )
   state = {on: false, toggle: this.toggle}
+  
   render() {
     const {children, ...rest} = this.props
     const ui =
